@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Qwen Voice Cloning</title>
+<style>
+  :root {
+    --accent: #0067c0;
+    --accent-hover: #0058a8;
+    --accent-press: #004e95;
+    --accent-text: #ffffff;
+    --bg: #f3f3f3;
+    --layer: rgba(255, 255, 255, 0.7);
+    --layer-solid: #ffffff;
+    --card-border: rgba(0, 0, 0, 0.06);
+    --stroke: rgba(0, 0, 0, 0.10);
+    --text: #1b1b1b;
+    --text-sec: #5d5d5d;
+    --text-tert: #8a8a8a;
+    --control-bg: rgba(255, 255, 255, 0.6);
+    --control-bg-hover: rgba(255, 255, 255, 0.85);
+    --control-border: rgba(0, 0, 0, 0.12);
+    --control-border-b: rgba(0, 0, 0, 0.30);
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.16);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --ok: #0f7b0f;
+    --warn: #9d5d00;
+    --err: #c42b1c;
+    --track: rgba(0, 0, 0, 0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --accent: #60cdff;
+      --accent-hover: #54b8e6;
+      --accent-press: #3aa0d1;
+      --accent-text: #00263f;
+      --bg: #1f1f1f;
+      --layer: rgba(58, 58, 58, 0.55);
+      --layer-solid: #2b2b2b;
+      --card-border: rgba(255, 255, 255, 0.07);
+      --stroke: rgba(255, 255, 255, 0.10);
+      --text: #f4f4f4;
+      --text-sec: #c4c4c4;
+      --text-tert: #9a9a9a;
+      --control-bg: rgba(255, 255, 255, 0.06);
+      --control-bg-hover: rgba(255, 255, 255, 0.10);
+      --control-border: rgba(255, 255, 255, 0.10);
+      --control-border-b: rgba(255, 255, 255, 0.55);
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.30);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.50);
+      --ok: #6ccb5f;
+      --warn: #fce100;
+      --err: #ff99a4;
+      --track: rgba(255, 255, 255, 0.30);
+    }
+  }
+  html[data-theme="light"] {
+    --accent:#0067c0;--accent-hover:#0058a8;--accent-press:#004e95;--accent-text:#fff;
+    --bg:#f3f3f3;--layer:rgba(255,255,255,0.7);--layer-solid:#fff;--card-border:rgba(0,0,0,0.06);
+    --stroke:rgba(0,0,0,0.10);--text:#1b1b1b;--text-sec:#5d5d5d;--text-tert:#8a8a8a;
+    --control-bg:rgba(255,255,255,0.6);--control-bg-hover:rgba(255,255,255,0.85);
+    --control-border:rgba(0,0,0,0.12);--control-border-b:rgba(0,0,0,0.30);
+    --shadow:0 4px 16px rgba(0,0,0,0.08);--shadow-lg:0 16px 48px rgba(0,0,0,0.16);
+    --ok:#0f7b0f;--warn:#9d5d00;--err:#c42b1c;--track:rgba(0,0,0,0.18);
+  }
+  html[data-theme="dark"] {
+    --accent:#60cdff;--accent-hover:#54b8e6;--accent-press:#3aa0d1;--accent-text:#00263f;
+    --bg:#1f1f1f;--layer:rgba(58,58,58,0.55);--layer-solid:#2b2b2b;--card-border:rgba(255,255,255,0.07);
+    --stroke:rgba(255,255,255,0.10);--text:#f4f4f4;--text-sec:#c4c4c4;--text-tert:#9a9a9a;
+    --control-bg:rgba(255,255,255,0.06);--control-bg-hover:rgba(255,255,255,0.10);
+    --control-border:rgba(255,255,255,0.10);--control-border-b:rgba(255,255,255,0.55);
+    --shadow:0 4px 16px rgba(0,0,0,0.30);--shadow-lg:0 16px 48px rgba(0,0,0,0.50);
+    --ok:#6ccb5f;--warn:#fce100;--err:#ff99a4;--track:rgba(255,255,255,0.30);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(1200px 600px at 12% -8%, rgba(0, 103, 192, 0.10), transparent 60%),
+      radial-gradient(1000px 700px at 110% 0%, rgba(150, 80, 220, 0.10), transparent 55%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px; }
+
+  header.app {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 22px;
+  }
+  .logo {
+    width: 44px; height: 44px; border-radius: 11px; flex: none;
+    background: linear-gradient(135deg, var(--accent), #9b5cff);
+    display: grid; place-items: center; color: #fff; box-shadow: var(--shadow);
+  }
+  .logo svg { width: 24px; height: 24px; }
+  header.app h1 { font-size: 22px; font-weight: 650; margin: 0; letter-spacing: .2px;
+    font-family: "Segoe UI Variable Display", "Segoe UI", sans-serif; }
+  header.app .sub { font-size: 12.5px; color: var(--text-sec); margin-top: 1px; }
+  header.app .spacer { flex: 1; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 550;
+    padding: 6px 11px; border-radius: 999px; border: 1px solid var(--card-border);
+    background: var(--layer); backdrop-filter: blur(20px); color: var(--text-sec);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tert); }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .dot.warn { background: var(--warn); }
+  .dot.err { background: var(--err); }
+
+  .iconbtn {
+    width: 38px; height: 38px; border-radius: 9px; border: 1px solid var(--control-border);
+    background: var(--control-bg); color: var(--text); cursor: pointer; display: grid; place-items: center;
+    transition: background .12s, transform .05s;
+  }
+  .iconbtn:hover { background: var(--control-bg-hover); }
+  .iconbtn:active { transform: scale(0.96); }
+  .iconbtn svg { width: 18px; height: 18px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 880px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--layer); backdrop-filter: blur(34px) saturate(140%);
+    -webkit-backdrop-filter: blur(34px) saturate(140%);
+    border: 1px solid var(--card-border); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow); padding: 20px; margin-bottom: 18px;
+  }
+  .card h2 { font-size: 14px; font-weight: 620; margin: 0 0 14px; letter-spacing: .3px;
+    text-transform: uppercase; color: var(--text-sec); display: flex; align-items: center; gap: 8px; }
+  .card h2 .num { width: 20px; height: 20px; border-radius: 6px; background: var(--accent); color: var(--accent-text);
+    font-size: 12px; display: grid; place-items: center; font-weight: 700; }
+
+  label.fld { display: block; font-size: 13px; font-weight: 550; margin: 0 0 6px; color: var(--text); }
+  .hint { font-size: 12px; color: var(--text-tert); margin: 5px 0 0; line-height: 1.45; }
+
+  textarea, input[type="text"], input[type="number"], select {
+    width: 100%; font: inherit; font-size: 14px; color: var(--text);
+    background: var(--control-bg); border: 1px solid var(--control-border);
+    border-bottom: 1.5px solid var(--control-border-b);
+    border-radius: var(--radius); padding: 10px 12px; outline: none;
+    transition: border-color .12s, background .12s;
+  }
+  textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+  textarea:hover, input:hover, select:hover { background: var(--control-bg-hover); }
+  textarea:focus, input:focus, select:focus { border-bottom-color: var(--accent); border-bottom-width: 2px; padding-bottom: 9.5px; }
+  select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.5'/></svg>");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; cursor: pointer; }
+
+  /* drop zone */
+  .drop {
+    border: 1.5px dashed var(--control-border-b); border-radius: var(--radius); padding: 22px;
+    text-align: center; cursor: pointer; transition: background .12s, border-color .12s; background: var(--control-bg);
+  }
+  .drop:hover { background: var(--control-bg-hover); border-color: var(--accent); }
+  .drop.drag { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: var(--accent); }
+  .drop .big { font-size: 14px; font-weight: 550; }
+  .drop .small { font-size: 12px; color: var(--text-tert); margin-top: 4px; }
+  .drop svg { width: 30px; height: 30px; opacity: .55; margin-bottom: 6px; }
+
+  .rowflex { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .rowflex.mt { margin-top: 12px; }
+  audio { width: 100%; height: 38px; margin-top: 12px; border-radius: var(--radius); }
+
+  .btn {
+    font: inherit; font-size: 14px; font-weight: 600; border-radius: var(--radius); cursor: pointer;
+    padding: 10px 18px; border: 1px solid transparent; transition: background .12s, transform .05s, box-shadow .12s;
+    display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+  }
+  .btn:active { transform: scale(0.985); }
+  .btn.primary { background: var(--accent); color: var(--accent-text); box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.primary:disabled { background: var(--track); color: var(--text-tert); cursor: not-allowed; box-shadow: none; }
+  .btn.sub { background: var(--control-bg); color: var(--text); border-color: var(--control-border); }
+  .btn.sub:hover { background: var(--control-bg-hover); }
+  .btn.rec { background: #c42b1c; color: #fff; }
+  .btn.rec.on { background: #c42b1c; animation: pulse 1.3s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(196,43,28,.5);} 50%{ box-shadow: 0 0 0 8px rgba(196,43,28,0);} }
+  .btn svg { width: 16px; height: 16px; }
+
+  .generate { width: 100%; padding: 15px; font-size: 16px; border-radius: 10px; }
+
+  /* segmented */
+  .seg { display: inline-flex; background: var(--control-bg); border: 1px solid var(--control-border);
+    border-radius: var(--radius); padding: 3px; gap: 3px; }
+  .seg button { font: inherit; font-size: 13px; font-weight: 550; border: none; background: transparent; color: var(--text-sec);
+    padding: 7px 16px; border-radius: 6px; cursor: pointer; transition: background .12s, color .12s; }
+  .seg button.active { background: var(--accent); color: var(--accent-text); box-shadow: var(--shadow); }
+
+  /* toggle */
+  .toggle { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .toggle input { display: none; }
+  .toggle .track2 { width: 40px; height: 22px; border-radius: 999px; background: var(--track);
+    position: relative; transition: background .15s; flex: none; border: 1px solid transparent; }
+  .toggle .knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--layer-solid); transition: left .15s, width .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  .toggle input:checked + .track2 { background: var(--accent); }
+  .toggle input:checked + .track2 .knob { left: 21px; background: var(--accent-text); }
+  .toggle .lbl { font-size: 13px; }
+
+  /* sliders */
+  .slider { display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; align-items: center; margin-bottom: 16px; }
+  .slider .top { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; }
+  .slider .top .name { font-size: 13px; font-weight: 550; }
+  .slider .top .val { font-size: 13px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px;
+    background: linear-gradient(to right, var(--accent) var(--pct,50%), var(--track) var(--pct,50%)); }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; margin-top: -7px; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--accent); border: 4px solid var(--layer-solid); box-shadow: 0 0 0 1px var(--control-border-b); transition: transform .1s; }
+  input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 520px) { .two { grid-template-columns: 1fr; } }
+  .field { margin-bottom: 14px; }
+
+  details.adv { margin-top: 4px; border-top: 1px solid var(--stroke); padding-top: 4px; }
+  details.adv > summary { cursor: pointer; list-style: none; padding: 12px 2px; font-size: 13px; font-weight: 600;
+    color: var(--text-sec); display: flex; align-items: center; gap: 8px; }
+  details.adv > summary::-webkit-details-marker { display: none; }
+  details.adv > summary .chev { transition: transform .15s; }
+  details.adv[open] > summary .chev { transform: rotate(90deg); }
+  .advbody { padding: 8px 2px 2px; }
+
+  .seedrow { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; }
+
+  /* status / progress */
+  .statusbar { margin-top: 14px; display: none; }
+  .statusbar.show { display: block; }
+  .pbar { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .pbar > i { display: block; height: 100%; width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), #9b5cff); transition: width .25s; }
+  .pbar.indet > i { width: 35% !important; animation: indet 1.2s infinite ease-in-out; }
+  @keyframes indet { 0%{ margin-left: -35%; } 100%{ margin-left: 100%; } }
+  .statustext { font-size: 13px; color: var(--text-sec); margin-top: 9px; display: flex; align-items: center; gap: 8px; }
+  .statustext.err { color: var(--err); }
+  .spin { width: 14px; height: 14px; border: 2px solid var(--track); border-top-color: var(--accent); border-radius: 50%; animation: sp .7s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+
+  .result { display: none; }
+  .result.show { display: block; }
+  .reshead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .restime { font-size: 12px; color: var(--text-tert); }
+  .histitem { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--stroke); font-size: 13px; }
+  .histitem .nm { flex: 1; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .histitem audio { width: 230px; margin: 0; height: 34px; }
+  .histitem a { color: var(--accent); text-decoration: none; font-size: 12px; }
+
+  .banner { display:none; margin-bottom:18px; padding:12px 14px; border-radius:var(--radius);
+    font-size:13px; background: color-mix(in srgb, var(--warn) 16%, var(--layer)); border:1px solid color-mix(in srgb, var(--warn) 40%, transparent); color: var(--text); }
+  .banner.show { display:block; }
+  .footer { text-align:center; font-size:12px; color:var(--text-tert); margin-top:26px; }
+  code.k { background: var(--control-bg); padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Qwen Voice Cloning</h1>
+      <div class="sub">Clone any voice from a short sample · running locally on your GPU</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill" id="modelPill"><span class="dot" id="modelDot"></span><span id="modelTxt">Checking model…</span></span>
+    <button class="iconbtn" id="themeBtn" title="Toggle theme">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>
+    </button>
+  </header>
+
+  <div class="banner" id="dlBanner"></div>
+
+  <div class="grid">
+    <!-- LEFT COLUMN -->
+    <div>
+      <!-- Reference voice -->
+      <div class="card">
+        <h2><span class="num">1</span> Reference voice</h2>
+        <div class="drop" id="drop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div class="big">Drop an audio file or click to browse</div>
+          <div class="small">WAV, MP3, M4A, FLAC, OGG · 5–15 seconds of clean speech works best</div>
+        </div>
+        <input type="file" id="file" accept="audio/*" hidden />
+        <div class="rowflex mt">
+          <button class="btn rec" id="recBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg>
+            <span id="recLbl">Record</span>
+          </button>
+          <span class="hint" id="refMeta" style="margin:0;"></span>
+        </div>
+        <audio id="refAudio" controls style="display:none;"></audio>
+        <div class="field" style="margin-top:16px;">
+          <label class="fld" for="refText">Transcript of the reference <span style="color:var(--text-tert);font-weight:400;">(what is said in the clip)</span></label>
+          <textarea id="refText" placeholder="Type exactly what the reference clip says. This greatly improves cloning accuracy. Leave empty to let the model auto-detect."></textarea>
+          <p class="hint">Optional but strongly recommended. Match the spoken words and language of the sample.</p>
+        </div>
+      </div>
+
+      <!-- What to say -->
+      <div class="card">
+        <h2><span class="num">2</span> What should the voice say</h2>
+        <textarea id="targetText" style="min-height:120px;" placeholder="Type the text you want spoken in the cloned voice…">Hello! This voice was cloned locally using Qwen text to speech. You can make it say anything you type here.</textarea>
+        <div class="two" style="margin-top:14px;">
+          <div>
+            <label class="fld" for="language">Language</label>
+            <select id="language">
+              <option>Auto</option><option selected>English</option><option>Chinese</option><option>Japanese</option>
+              <option>Korean</option><option>French</option><option>German</option><option>Spanish</option>
+              <option>Portuguese</option><option>Russian</option><option>Italian</option>
+            </select>
+          </div>
+          <div>
+            <label class="fld">Model quality</label>
+            <div class="seg" id="modelSeg">
+              <button data-v="0.6B">0.6B · Fast</button>
+              <button data-v="1.7B" class="active">1.7B · Best</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <!-- Settings -->
+      <div class="card">
+        <h2><span class="num">3</span> Generation settings</h2>
+
+        <div class="slider" id="s_temp">
+          <div class="top"><span class="name">Temperature <span style="color:var(--text-tert);font-weight:400">· expressiveness</span></span><span class="val"></span></div>
+          <input type="range" min="0.1" max="2" step="0.1" value="1" style="grid-column:1/-1" />
+        </div>
+        <div class="slider" id="s_topp">
+          <div class="top"><span class="name">Top-p</span><span class="val"></span></div>
+          <input type="range" min="0" max="1" step="0.05" value="0.8" style="grid-column:1/-1" />
+        </div>
+        <div class="slider" id="s_topk">
+          <div class="top"><span class="name">Top-k</span><span class="val"></span></div>
+          <input type="range" min="0" max="100" step="1" value="20" style="grid-column:1/-1" />
+        </div>
+        <div class="slider" id="s_rep">
+          <div class="top"><span class="name">Repetition penalty</span><span class="val"></span></div>
+          <input type="range" min="1" max="2" step="0.05" value="1.05" style="grid-column:1/-1" />
+        </div>
+        <div class="slider" id="s_max">
+          <div class="top"><span class="name">Max new tokens <span style="color:var(--text-tert);font-weight:400">· length cap</span></span><span class="val"></span></div>
+          <input type="range" min="512" max="4096" step="256" value="2048" style="grid-column:1/-1" />
+        </div>
+
+        <div class="field">
+          <label class="fld">Seed</label>
+          <div class="seedrow">
+            <input type="number" id="seed" min="0" value="42" />
+            <button class="btn sub" id="diceBtn" title="Randomize seed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/><circle cx="16" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="16" r="1.3" fill="currentColor"/></svg>
+            </button>
+            <label class="toggle"><input type="checkbox" id="randomSeed" checked /><span class="track2"><span class="knob"></span></span><span class="lbl">Random</span></label>
+          </div>
+        </div>
+
+        <details class="adv">
+          <summary><svg class="chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg> Advanced</summary>
+          <div class="advbody">
+            <div class="two">
+              <div class="field">
+                <label class="fld" for="precision">Precision</label>
+                <select id="precision"><option selected>bf16</option><option>fp32</option></select>
+              </div>
+              <div class="field">
+                <label class="fld" for="device">Device</label>
+                <select id="device"><option selected>auto</option><option>cuda</option><option>cpu</option><option>xpu</option><option>mps</option></select>
+              </div>
+            </div>
+            <div class="field">
+              <label class="fld" for="attention">Attention</label>
+              <select id="attention"><option selected>auto</option><option>sdpa</option><option>sage_attn</option><option>flash_attn</option><option>eager</option></select>
+              <p class="hint">auto picks the fastest available; falls back to sdpa.</p>
+            </div>
+            <div class="field"><label class="toggle"><input type="checkbox" id="xVector" /><span class="track2"><span class="knob"></span></span><span class="lbl">x-vector only (speaker embedding only, ignore prosody)</span></label></div>
+            <div class="field"><label class="toggle"><input type="checkbox" id="unload" /><span class="track2"><span class="knob"></span></span><span class="lbl">Unload model after generate (frees VRAM, slower next run)</span></label></div>
+          </div>
+        </details>
+      </div>
+
+      <!-- Generate -->
+      <div class="card">
+        <button class="btn primary generate" id="genBtn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/></svg>
+          <span id="genLbl">Add a reference voice first</span>
+        </button>
+        <div class="statusbar" id="statusbar">
+          <div class="pbar" id="pbar"><i></i></div>
+          <div class="statustext" id="statustext"></div>
+        </div>
+
+        <div class="result" id="result" style="margin-top:18px;">
+          <div class="reshead">
+            <strong style="font-size:14px;">Result</strong>
+            <span class="restime" id="restime"></span>
+          </div>
+          <audio id="outAudio" controls></audio>
+          <div class="rowflex mt">
+            <a class="btn sub" id="dlBtn" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download</a>
+            <button class="btn sub" id="regenBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Regenerate</button>
+          </div>
+          <div id="history"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Powered by ComfyUI-Qwen-TTS · <code class="k">FB_Qwen3TTSVoiceClone</code> · all generation runs on your local machine</div>
+</div>
+
+<script>
+const API = location.origin;
+const clientId = (crypto.randomUUID && crypto.randomUUID()) || ("vc" + Math.random().toString(36).slice(2));
+let refFilename = null;       // filename on the ComfyUI server after upload
+let refLocalBlobUrl = null;   // for local preview
+let pendingPromptId = null;
+let startTime = 0;
+let ws = null;
+
+/* ---------- theme ---------- */
+const themeBtn = document.getElementById('themeBtn');
+function applyTheme(t){ if(t==='auto'){document.documentElement.removeAttribute('data-theme');} else {document.documentElement.setAttribute('data-theme',t);} localStorage.setItem('vc_theme',t); }
+themeBtn.onclick = ()=>{ const cur = localStorage.getItem('vc_theme')||'auto'; const next = cur==='auto'?'dark':cur==='dark'?'light':'auto'; applyTheme(next); };
+applyTheme(localStorage.getItem('vc_theme')||'auto');
+
+/* ---------- sliders ---------- */
+function bindSlider(id, fmt){
+  const wrap = document.getElementById(id);
+  const r = wrap.querySelector('input'); const val = wrap.querySelector('.val');
+  const upd = ()=>{ val.textContent = fmt? fmt(r.value): r.value;
+    const pct = (r.value - r.min)/(r.max - r.min)*100; r.style.setProperty('--pct', pct+'%'); };
+  r.addEventListener('input', upd); upd();
+  return r;
+}
+const S = {
+  temp: bindSlider('s_temp', v=>(+v).toFixed(1)),
+  topp: bindSlider('s_topp', v=>(+v).toFixed(2)),
+  topk: bindSlider('s_topk'),
+  rep:  bindSlider('s_rep', v=>(+v).toFixed(2)),
+  max:  bindSlider('s_max'),
+};
+
+/* ---------- model segmented ---------- */
+let modelChoice = '1.7B';
+document.querySelectorAll('#modelSeg button').forEach(b=>{
+  b.onclick = ()=>{ document.querySelectorAll('#modelSeg button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); modelChoice = b.dataset.v; checkModel(); };
+});
+
+/* ---------- seed ---------- */
+const seedEl = document.getElementById('seed');
+const randomSeed = document.getElementById('randomSeed');
+document.getElementById('diceBtn').onclick = ()=>{ seedEl.value = Math.floor(Math.random()*1e9); randomSeed.checked=false; };
+
+/* ---------- model status ---------- */
+async function checkModel(){
+  const dot = document.getElementById('modelDot'); const txt = document.getElementById('modelTxt');
+  const banner = document.getElementById('dlBanner');
+  try{
+    const r = await fetch(API+'/voiceclone/status'); const j = await r.json();
+    const key = 'Qwen3-TTS-12Hz-'+modelChoice+'-Base';
+    const ready = j.models && j.models[key];
+    if(ready){ dot.className='dot ok'; txt.textContent = modelChoice+' model ready'; banner.classList.remove('show'); }
+    else { dot.className='dot warn'; txt.textContent = modelChoice+' model not downloaded';
+      banner.innerHTML = '⏳ The <b>'+modelChoice+' Base</b> model isn\'t downloaded yet. The first generation will download ~'+(modelChoice==='1.7B'?'4 GB':'2 GB')+' before producing audio — this can take several minutes. <b>Do not press Generate repeatedly</b>; just wait. Progress shows in the ComfyUI server console.';
+      banner.classList.add('show'); }
+  }catch(e){ dot.className='dot err'; txt.textContent='ComfyUI not reachable'; }
+}
+checkModel(); setInterval(checkModel, 15000);
+
+/* ---------- audio: decode anything -> mono 16-bit WAV ---------- */
+async function toWav(blobOrFile){
+  const buf = await blobOrFile.arrayBuffer();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = new AC();
+  const audio = await ac.decodeAudioData(buf.slice(0));
+  const ch = audio.numberOfChannels, len = audio.length;
+  // downmix to mono
+  const mono = new Float32Array(len);
+  for(let c=0;c<ch;c++){ const d = audio.getChannelData(c); for(let i=0;i<len;i++) mono[i]+=d[i]/ch; }
+  const sr = audio.sampleRate;
+  ac.close();
+  // encode 16-bit PCM WAV
+  const bytesPerSample = 2; const dataSize = len*bytesPerSample;
+  const ab = new ArrayBuffer(44 + dataSize); const dv = new DataView(ab);
+  const ws = (o,s)=>{ for(let i=0;i<s.length;i++) dv.setUint8(o+i, s.charCodeAt(i)); };
+  ws(0,'RIFF'); dv.setUint32(4, 36+dataSize, true); ws(8,'WAVE'); ws(12,'fmt ');
+  dv.setUint32(16,16,true); dv.setUint16(20,1,true); dv.setUint16(22,1,true);
+  dv.setUint32(24,sr,true); dv.setUint32(28,sr*bytesPerSample,true); dv.setUint16(32,bytesPerSample,true);
+  dv.setUint16(34,16,true); ws(36,'data'); dv.setUint32(40,dataSize,true);
+  let off=44; for(let i=0;i<len;i++){ let s=Math.max(-1,Math.min(1,mono[i])); dv.setInt16(off, s<0?s*0x8000:s*0x7FFF, true); off+=2; }
+  return { blob: new Blob([ab],{type:'audio/wav'}), duration: len/sr };
+}
+
+async function handleAudio(blobOrFile, label){
+  setRefMeta('Processing audio…', false);
+  try{
+    const { blob, duration } = await toWav(blobOrFile);
+    if(refLocalBlobUrl) URL.revokeObjectURL(refLocalBlobUrl);
+    refLocalBlobUrl = URL.createObjectURL(blob);
+    const ra = document.getElementById('refAudio'); ra.src = refLocalBlobUrl; ra.style.display='block';
+    // upload
+    const fd = new FormData(); fd.append('audio', blob, (label||'reference')+'.wav');
+    const r = await fetch(API+'/voiceclone/upload', {method:'POST', body: fd});
+    if(!r.ok) throw new Error('upload failed ('+r.status+')');
+    const j = await r.json(); refFilename = j.filename;
+    const warn = (duration<3||duration>25)? ' ⚠ aim for 5–15s' : '';
+    setRefMeta('✓ '+refFilename+' · '+duration.toFixed(1)+'s'+warn, false);
+    enableGen();
+  }catch(e){ setRefMeta('Could not read this audio: '+e.message, true); }
+}
+function setRefMeta(t, isErr){ const m=document.getElementById('refMeta'); m.textContent=t; m.style.color = isErr?'var(--err)':'var(--text-tert)'; }
+function enableGen(){ const b=document.getElementById('genBtn'); if(refFilename){ b.disabled=false; document.getElementById('genLbl').textContent='Generate cloned voice'; } }
+
+/* ---------- drop / file / record ---------- */
+const drop = document.getElementById('drop'), fileEl = document.getElementById('file');
+drop.onclick = ()=>fileEl.click();
+fileEl.onchange = ()=>{ if(fileEl.files[0]) handleAudio(fileEl.files[0], fileEl.files[0].name.replace(/\.[^.]+$/,'')); };
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag');}));
+drop.addEventListener('drop', e=>{ const f=e.dataTransfer.files[0]; if(f) handleAudio(f, f.name.replace(/\.[^.]+$/,'')); });
+
+let mediaRec=null, chunks=[], recTimer=null, recSecs=0;
+const recBtn=document.getElementById('recBtn'), recLbl=document.getElementById('recLbl');
+recBtn.onclick = async ()=>{
+  if(mediaRec && mediaRec.state==='recording'){ mediaRec.stop(); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks=[]; mediaRec = new MediaRecorder(stream);
+    mediaRec.ondataavailable = e=>chunks.push(e.data);
+    mediaRec.onstop = ()=>{ stream.getTracks().forEach(t=>t.stop()); clearInterval(recTimer);
+      recBtn.classList.remove('on'); recLbl.textContent='Record'; recSecs=0;
+      handleAudio(new Blob(chunks,{type: mediaRec.mimeType||'audio/webm'}), 'recording'); };
+    mediaRec.start(); recBtn.classList.add('on'); recSecs=0;
+    recTimer=setInterval(()=>{ recSecs++; recLbl.textContent='Stop · '+recSecs+'s'; }, 1000);
+  }catch(e){ setRefMeta('Microphone blocked: '+e.message, true); }
+};
+
+/* ---------- websocket progress ---------- */
+function connectWS(){
+  try{
+    ws = new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws?clientId='+clientId);
+    ws.onmessage = (ev)=>{ if(typeof ev.data!=='string') return; let m; try{m=JSON.parse(ev.data);}catch{return;}
+      const d = m.data||{};
+      if(d.prompt_id && pendingPromptId && d.prompt_id!==pendingPromptId) return;
+      if(m.type==='execution_start'){ setStatus('Loading model & generating…', 'indet'); }
+      else if(m.type==='progress'){ const pct = d.max? Math.round(d.value/d.max*100):0; setStatus('Generating… '+pct+'%', pct); }
+      else if(m.type==='executing'){ if(d.node===null && pendingPromptId){ /* finished */ fetchResult(pendingPromptId); } else if(d.node){ setStatus('Running '+nodeName(d.node)+'…','indet'); } }
+      else if(m.type==='executed'){ if(d.output && d.output.audio){ showResult(d.output.audio[0]); } }
+      else if(m.type==='execution_error'){ failStatus((d.exception_message||'Generation failed')+''); }
+    };
+    ws.onclose = ()=>{ setTimeout(connectWS, 1500); };
+  }catch(e){}
+}
+function nodeName(id){ return ({'10':'audio loader','20':'voice clone','30':'save'})[id]||'node'; }
+connectWS();
+
+/* ---------- generate ---------- */
+function buildPrompt(){
+  let seed = randomSeed.checked? Math.floor(Math.random()*1e15) : (parseInt(seedEl.value)||0);
+  if(randomSeed.checked) seedEl.value = seed;
+  return {
+    "10": { "class_type":"LoadAudio", "inputs": { "audio": refFilename } },
+    "20": { "class_type":"FB_Qwen3TTSVoiceClone", "inputs": {
+        "target_text": document.getElementById('targetText').value,
+        "model_choice": modelChoice,
+        "device": document.getElementById('device').value,
+        "precision": document.getElementById('precision').value,
+        "language": document.getElementById('language').value,
+        "ref_audio": ["10",0],
+        "ref_text": document.getElementById('refText').value,
+        "seed": seed,
+        "max_new_tokens": parseInt(S.max.value),
+        "top_p": parseFloat(S.topp.value),
+        "top_k": parseInt(S.topk.value),
+        "temperature": parseFloat(S.temp.value),
+        "repetition_penalty": parseFloat(S.rep.value),
+        "x_vector_only": document.getElementById('xVector').checked,
+        "attention": document.getElementById('attention').value,
+        "unload_model_after_generate": document.getElementById('unload').checked
+    }},
+    "30": { "class_type":"SaveAudio", "inputs": { "audio":["20",0], "filename_prefix":"voiceclone" } }
+  };
+}
+async function generate(){
+  if(!refFilename){ return; }
+  const btn=document.getElementById('genBtn'); btn.disabled=true;
+  document.getElementById('result').classList.remove('show');
+  setStatus('Queuing…','indet'); startTime = performance.now();
+  try{
+    const r = await fetch(API+'/prompt', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ prompt: buildPrompt(), client_id: clientId })});
+    if(!r.ok){ const t=await r.text(); throw new Error(t.slice(0,300)); }
+    const j = await r.json(); pendingPromptId = j.prompt_id;
+    setStatus('In queue…','indet');
+  }catch(e){ failStatus('Could not start: '+e.message); btn.disabled=false; }
+}
+document.getElementById('genBtn').onclick = generate;
+document.getElementById('regenBtn').onclick = ()=>{ if(randomSeed.checked) seedEl.value=Math.floor(Math.random()*1e9); generate(); };
+
+async function fetchResult(pid){
+  try{
+    const r = await fetch(API+'/history/'+pid); const h = await r.json();
+    const entry = h[pid]; if(!entry) return;
+    if(entry.status && entry.status.status_str==='error'){ failStatus('Generation error (see ComfyUI console)'); return; }
+    for(const nid in entry.outputs){ const o=entry.outputs[nid]; if(o.audio){ showResult(o.audio[0]); return; } }
+  }catch(e){}
+}
+function viewURL(a){ return API+'/view?filename='+encodeURIComponent(a.filename)+'&subfolder='+encodeURIComponent(a.subfolder||'')+'&type='+encodeURIComponent(a.type||'output'); }
+function showResult(a){
+  const url = viewURL(a); const secs = ((performance.now()-startTime)/1000).toFixed(1);
+  pendingPromptId=null; document.getElementById('genBtn').disabled=false;
+  hideStatus();
+  document.getElementById('outAudio').src = url;
+  document.getElementById('dlBtn').href = url; document.getElementById('dlBtn').download = a.filename;
+  document.getElementById('restime').textContent = 'Generated in '+secs+'s · '+a.filename;
+  document.getElementById('result').classList.add('show');
+  document.getElementById('outAudio').play().catch(()=>{});
+  addHistory(a, url);
+}
+const histItems=[];
+function addHistory(a,url){
+  histItems.unshift({a,url});
+  const box=document.getElementById('history'); box.innerHTML='';
+  histItems.slice(0,6).forEach(h=>{ const d=document.createElement('div'); d.className='histitem';
+    d.innerHTML = '<span class="nm">'+h.a.filename+'</span>'; const au=document.createElement('audio'); au.controls=true; au.src=h.url;
+    const dl=document.createElement('a'); dl.href=h.url; dl.download=h.a.filename; dl.textContent='download';
+    d.appendChild(au); d.appendChild(dl); box.appendChild(d); });
+}
+
+/* ---------- status helpers ---------- */
+function setStatus(t, prog){ const sb=document.getElementById('statusbar'), pb=document.getElementById('pbar'), st=document.getElementById('statustext');
+  sb.classList.add('show'); st.className='statustext'; st.innerHTML='<span class="spin"></span>'+t;
+  if(prog==='indet'){ pb.classList.add('indet'); pb.querySelector('i').style.width='35%'; }
+  else { pb.classList.remove('indet'); pb.querySelector('i').style.width=(prog||0)+'%'; } }
+function failStatus(t){ const sb=document.getElementById('statusbar'), pb=document.getElementById('pbar'), st=document.getElementById('statustext');
+  sb.classList.add('show'); pb.classList.remove('indet'); pb.querySelector('i').style.width='0%';
+  st.className='statustext err'; st.textContent='✕ '+t; pendingPromptId=null; document.getElementById('genBtn').disabled=false; }
+function hideStatus(){ document.getElementById('statusbar').classList.remove('show'); }
+</script>
+</body>
+</html>
