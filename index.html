@@ -302,9 +302,15 @@
         </div>
         <audio id="refAudio" controls style="display:none;"></audio>
         <div class="field" style="margin-top:16px;">
-          <label class="fld" for="refText">Transcript of the reference <span style="color:var(--text-tert);font-weight:400;">(what is said in the clip)</span></label>
-          <textarea id="refText" placeholder="Type exactly what the reference clip says. This greatly improves cloning accuracy. Leave empty to let the model auto-detect."></textarea>
-          <p class="hint">Optional but strongly recommended. Match the spoken words and language of the sample.</p>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <label class="fld" for="refText" style="margin:0;">Transcript of the reference <span style="color:var(--text-tert);font-weight:400;">(auto-filled)</span></label>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <label class="toggle" style="font-size:12px;"><input type="checkbox" id="autoTx" checked /><span class="track2"><span class="knob"></span></span><span class="lbl">Auto-transcribe</span></label>
+              <button class="btn sub" id="txBtn" style="padding:5px 10px;font-size:12px;" disabled>Transcribe</button>
+            </div>
+          </div>
+          <textarea id="refText" style="margin-top:6px;" placeholder="Auto-filled by transcribing your clip. You can edit it, or turn off Auto-transcribe to type your own."></textarea>
+          <p class="hint" id="txHint">When you add a clip, it's transcribed automatically (Whisper, on your GPU). First run downloads the model (~1 GB).</p>
         </div>
       </div>
 
@@ -316,7 +322,7 @@
           <div>
             <label class="fld" for="language">Language</label>
             <select id="language">
-              <option>Auto</option><option selected>English</option><option>Chinese</option><option>Japanese</option>
+              <option>Auto</option><option selected>English</option><option>Tagalog</option><option>Chinese</option><option>Japanese</option>
               <option>Korean</option><option>French</option><option>German</option><option>Spanish</option>
               <option>Portuguese</option><option>Russian</option><option>Italian</option>
             </select>
@@ -523,10 +529,27 @@ async function handleAudio(blobOrFile, label){
     const warn = (duration<3||duration>25)? ' ⚠ aim for 5–15s' : '';
     setRefMeta('✓ '+refFilename+' · '+duration.toFixed(1)+'s'+warn, false);
     enableGen();
+    document.getElementById('txBtn').disabled = false;
+    if (document.getElementById('autoTx').checked) transcribeRef();
   }catch(e){ setRefMeta('Could not read this audio: '+e.message, true); }
 }
 function setRefMeta(t, isErr){ const m=document.getElementById('refMeta'); m.textContent=t; m.style.color = isErr?'var(--err)':'var(--text-tert)'; }
 function enableGen(){ const b=document.getElementById('genBtn'); if(refFilename){ b.disabled=false; document.getElementById('genLbl').textContent='Generate cloned voice'; } }
+
+async function transcribeRef(){
+  if(!refFilename) return;
+  const ta=document.getElementById('refText'), hint=document.getElementById('txHint'), btn=document.getElementById('txBtn');
+  btn.disabled=true; hint.textContent='⏳ Transcribing reference… (first run loads Whisper, ~30s)';
+  try{
+    const r=await fetch(API+'/voiceclone/transcribe',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({filename:refFilename, language:document.getElementById('language').value})});
+    const j=await r.json();
+    if(j.text!==undefined && !j.error){ ta.value=j.text; hint.textContent='✓ Auto-transcribed — edit if needed.'; }
+    else { hint.textContent='⚠ Transcribe failed: '+(j.error||'unknown')+'. Type it manually if you like.'; }
+  }catch(e){ hint.textContent='⚠ Transcribe error: '+e.message; }
+  finally{ btn.disabled=false; }
+}
+document.getElementById('txBtn').onclick = transcribeRef;
 
 /* ---------- drop / file / record ---------- */
 const drop = document.getElementById('drop'), fileEl = document.getElementById('file');
@@ -572,6 +595,12 @@ function nodeName(id){ return ({'10':'audio loader','20':'voice clone','30':'sav
 connectWS();
 
 /* ---------- generate ---------- */
+// Qwen3-TTS only accepts a fixed language set; anything else (e.g. Tagalog,
+// which Whisper transcribes fine but the TTS node would reject) falls back to
+// "Auto" so the model auto-detects from the transcript.
+const QWEN_LANGS = ["Auto","Chinese","English","Japanese","Korean","French","German","Spanish","Portuguese","Russian","Italian"];
+function qwenNodeLanguage(ui){ return QWEN_LANGS.includes(ui) ? ui : "Auto"; }
+
 function buildPrompt(){
   let seed = randomSeed.checked? Math.floor(Math.random()*1e15) : (parseInt(seedEl.value)||0);
   if(randomSeed.checked) seedEl.value = seed;
@@ -582,7 +611,7 @@ function buildPrompt(){
         "model_choice": modelChoice,
         "device": document.getElementById('device').value,
         "precision": document.getElementById('precision').value,
-        "language": document.getElementById('language').value,
+        "language": qwenNodeLanguage(document.getElementById('language').value),
         "ref_audio": ["10",0],
         "ref_text": document.getElementById('refText').value,
         "seed": seed,
